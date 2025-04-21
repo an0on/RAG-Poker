@@ -10,7 +10,7 @@ app = FastAPI()
 
 # 💥 Hardcoded (Notfalllösung)
 SUPABASE_URL = "https://wplsimkprytlaaxvpjed.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwbHNpbWtwcnl0bGFheHZwamVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxOTAxNTEsImV4cCI6MjA2MDc2NjE1MX0.gq6ajiuRwZxItWYH3YaneEz-Khx2Ft_zf5R_JE2yXus"
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
