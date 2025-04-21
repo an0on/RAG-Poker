@@ -1,56 +1,45 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
-import requests
-import os
-import sys
 from supabase import create_client, Client
+import os
+import requests
 
 app = FastAPI()
 
-# 💥 Hardcoded (Notfalllösung)
-SUPABASE_URL = "https://wplsimkprytlaaxvpjed.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwbHNpbWtwcnl0bGFheHZwamVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxOTAxNTEsImV4cCI6MjA2MDc2NjE1MX0.gq6ajiuRwZxItWYH3YaneEz-Khx2Ft_zf5R_JE2yXus"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise Exception("Fehlende Umgebungsvariablen: SUPABASE_URL und/oder SUPABASE_KEY")
 
-print("✅ SUPABASE_URL =", SUPABASE_URL)
-print("✅ SUPABASE_KEY =", SUPABASE_KEY[:5] + "...")
-print("✅ OLLAMA_URL =", OLLAMA_URL)
-
-if not SUPABASE_URL:
-    print("❌ ERROR: SUPABASE_URL fehlt!")
-    sys.exit(1)
-
-if not SUPABASE_KEY:
-    print("❌ ERROR: SUPABASE_KEY fehlt!")
-    sys.exit(1)
-
-model = SentenceTransformer("all-MiniLM-L6-v2")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class QuestionRequest(BaseModel):
     question: str
 
 def embed_text(text: str):
-    return model.encode(text).tolist()
-
-def query_supabase(embedding: list, top_k: int = 3):
-    sql = f"""
-        SELECT content
-        FROM regelwerk_chunks
-        ORDER BY embedding <#> '{embedding}'
-        LIMIT {top_k};
-    """
-    result = supabase.rpc("sql", {"query": sql}).execute()
-    return [row["content"] for row in result.data] if result.data else []
-
-def query_ollama(prompt: str, model: str = "mistral"):
-    res = requests.post(
-        f"{OLLAMA_URL}/api/generate",
-        json={"model": model, "prompt": prompt}
+    response = requests.post(
+        f"{OLLAMA_URL}/api/embeddings",
+        json={"model": "nomic-embed-text", "prompt": text}
     )
-    return res.json().get("response", "") if res.ok else "Fehler bei OLAMA."
+    response.raise_for_status()
+    return response.json()["embedding"]
+
+def query_supabase(embedding):
+    response = supabase.rpc("match_documents", {
+        "query_embedding": embedding,
+        "match_count": 5
+    }).execute()
+    return [match["content"] for match in response.data]
+
+def query_ollama(prompt: str):
+    response = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={"model": "llama3", "prompt": prompt, "stream": False}
+    )
+    response.raise_for_status()
+    return response.json()["response"]
 
 @app.post("/ask")
 def ask_question(data: QuestionRequest):
