@@ -1,0 +1,10 @@
+services:
+  - name: rag-poker
+    project: rag-poker
+    type: docker
+    dockerfilePath: ./Dockerfile
+    buildDirectory: .
+    ports:
+      - internal: 8787
+        external: 8787
+    envFile: .env
