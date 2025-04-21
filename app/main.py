@@ -3,14 +3,31 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 import requests
 import os
+import sys
 from supabase import create_client, Client
 
+app = FastAPI()
+
+# ENV-Variablen ausgeben
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-app = FastAPI()
-model = SentenceTransformer('all-MiniLM-L6-v2')
+print("✅ ENV CHECK")
+print("SUPABASE_URL:", SUPABASE_URL)
+print("SUPABASE_KEY:", SUPABASE_KEY[:5] + "..." if SUPABASE_KEY else "None")
+print("OLLAMA_URL:", OLLAMA_URL)
+
+# Wenn was fehlt → raus damit
+if not SUPABASE_URL:
+    print("❌ ERROR: SUPABASE_URL fehlt!")
+    sys.exit(1)
+
+if not SUPABASE_KEY:
+    print("❌ ERROR: SUPABASE_KEY fehlt!")
+    sys.exit(1)
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class QuestionRequest(BaseModel):
