@@ -51,6 +51,8 @@ async def ask_question(payload: Question):
         logging.info(f"Aufbereitete tsquery: {cleaned_query}")
 
         response = supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
+        logging.info(f"Typ des Response-Objekts: {type(response)}")
+        logging.info(f"Inhalt des Response-Objekts: {response.__dict__}") # Oder str(response)
         result = await response
         data = result.data or []
         logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
