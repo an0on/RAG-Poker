@@ -31,13 +31,15 @@ def ask_question(payload: Question):
 
     try:
         result = (
-            supabase
-            .table("regelwerk_chunks")
-            .select("text")
-            .text_search("text", question)
-            .range(0, 5)  # ersetzt limit(6)
-            .execute()
-        )
+    supabase
+    .table("regelwerk_chunks")
+    .select("text")
+    .text_search("text", question)
+    .execute()
+)
+
+chunks = [r["text"] for r in result.data[:5]] if result.data else []
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
