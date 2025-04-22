@@ -24,7 +24,13 @@ try:
 except ValueError:
     raise ValueError(f"Ungültiges Format für SUPABASE_URL: {SUPABASE_URL}")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Erstellen des Supabase-Clients
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    logging.error(f"Fehler beim Erstellen des Supabase-Clients: {e}")
+    raise Exception(f"Fehler beim Erstellen des Supabase-Clients: {e}")
+
 app = FastAPI()
 
 class Question(BaseModel):
@@ -44,6 +50,7 @@ async def ask_question(payload: Question):
         cleaned_query = " & ".join(filter(None, (word.strip().lower().replace("?", "").replace(",", "") for word in question.split())))
         logging.info(f"Aufbereitete tsquery: {cleaned_query}")
 
+        # Asynchrone Supabase-Abfrage
         result = await supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
         data = result.data or []
         logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
