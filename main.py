@@ -33,14 +33,14 @@ def ask_question(payload: Question):
         result = (
             supabase
             .table("regelwerk_chunks")
-            .select("text")
-            .text_search("text", question)
+            .select("content")
+            .text_search("content", question)
             .execute()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
-    chunks = [r["text"] for r in result.data[:5]] if result.data else []
+    chunks = [r["content"] for r in result.data[:5]] if result.data else []
 
     if not chunks:
         raise HTTPException(status_code=404, detail="Keine passenden Inhalte gefunden.")
