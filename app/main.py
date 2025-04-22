@@ -39,7 +39,7 @@ from supabase import create_client, Client
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama-server:11434")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Fehlende Umgebungsvariablen: SUPABASE_URL und/oder SUPABASE_KEY")
