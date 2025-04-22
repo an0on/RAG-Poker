@@ -3,10 +3,7 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 import os
 import requests
-from dotenv import load_dotenv
 
-# Load env
-load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
