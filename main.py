@@ -29,24 +29,21 @@ def read_root():
 def ask_question(payload: Question):
     question = payload.question
 
-    # Frage säubern für text_search (tsquery braucht Einzelbegriffe)
-    sanitized_query = question.replace("?", "").replace(",", "")
-
     try:
-    # Frage aufbereiten für PostgreSQL tsquery
-    cleaned_query = " & ".join(question.replace("?", "").replace(",", "").split())
+        # PostgreSQL tsquery vorbereiten
+        cleaned_query = " & ".join(question.replace("?", "").replace(",", "").split())
 
-    result = (
-        supabase
-        .table("regelwerk_chunks")
-        .select("content")
-        .text_search("content", cleaned_query)
-        .execute()
-    )
-except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
+        result = (
+            supabase
+            .table("regelwerk_chunks")
+            .select("content")
+            .text_search("content", cleaned_query)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
-    chunks = [r["content"] for r in result.data] if result.data else []
+    chunks = [r["content"] for r in result.data[:5]] if result.data else []
 
     if not chunks:
         raise HTTPException(status_code=404, detail="Keine passenden Inhalte gefunden.")
