@@ -52,9 +52,8 @@ async def ask_question(payload: Question):
 
         response = supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
         logging.info(f"Typ des Response-Objekts: {type(response)}")
-        logging.info(f"Inhalt des Response-Objekts: {response.__dict__}") # Oder str(response)
-        result = await response
-        data = result.data or []
+        logging.info(f"Inhalt des Response-Objekts: {response.__dict__}")
+        data = response.data or []  # Greife direkt auf response.data zu
         logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
 
     except Exception as e:
@@ -93,3 +92,4 @@ Antwort:"""
     except requests.exceptions.RequestException as e:
         logging.error(f"Ollama Fehler: {e}")
         raise HTTPException(status_code=502, detail=f"Ollama Fehler: {str(e)}")
+        
