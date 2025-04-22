@@ -14,10 +14,12 @@ try:
 
     # Korrekte Abfrage, um die Anzahl der Einträge zu erhalten
     response = supabase.table("regelwerk_chunks").select("*", count="exact").execute()
-    if response.error is None:
+    if response.data is not None:
         count = response.count
         print(f"Verbindung erfolgreich. Anzahl der Einträge in 'regelwerk_chunks': {count}")
     else:
+        print(f"Fehler bei der Abfrage: {response.error}')
+    elif response.error:
         print(f"Fehler bei der Abfrage: {response.error}")
 
 except Exception as e:
