@@ -1,40 +1,18 @@
-from fastapi import FastAPI, Request, HTTPException
-from pydantic import BaseModel
-from supabase import create_client, Client
-import os
-import requests
-from dotenv import load_dotenv
-
-# Load env
-load_dotenv()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama-server:11434")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise Exception("Fehlende Umgebungsvariablen: SUPABASE_URL und/oder SUPABASE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-app = FastAPI()
-
-class Question(BaseModel):
-    question: str
-
-@app.get("/")
-def read_root():
-    return {"message": "Bin bereit. Frag mich was unter POST /ask."}
-
 @app.post("/ask")
 def ask_question(payload: Question):
     question = payload.question
+
+    # 🧼 tsquery vorbereiten: Satzzeichen raus, Wörter mit & verknüpfen
+    ts_query = ' & '.join(
+        question.replace("?", "").replace("!", "").replace(",", "").replace(".", "").split()
+    )
 
     try:
         result = (
             supabase
             .table("regelwerk_chunks")
             .select("content")
-            .text_search("content", question)
+            .text_search("content", ts_query)
             .execute()
         )
     except Exception as e:
