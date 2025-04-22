@@ -33,16 +33,18 @@ def ask_question(payload: Question):
     sanitized_query = question.replace("?", "").replace(",", "")
 
     try:
-        result = (
-            supabase
-            .table("regelwerk_chunks")
-            .select("content")
-            .text_search("content", sanitized_query)
-            .range(0, 4)  # hol dir 5 Treffer (0-4)
-            .execute()
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
+    # Frage aufbereiten für PostgreSQL tsquery
+    cleaned_query = " & ".join(question.replace("?", "").replace(",", "").split())
+
+    result = (
+        supabase
+        .table("regelwerk_chunks")
+        .select("content")
+        .text_search("content", cleaned_query)
+        .execute()
+    )
+except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
     chunks = [r["content"] for r in result.data] if result.data else []
 
