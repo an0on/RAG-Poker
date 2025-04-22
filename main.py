@@ -31,19 +31,16 @@ def ask_question(payload: Question):
 
     try:
         result = (
-    supabase
-    .table("regelwerk_chunks")
-    .select("text")
-    .text_search("text", question)
-    .execute()
-)
-
-chunks = [r["text"] for r in result.data[:5]] if result.data else []
-
+            supabase
+            .table("regelwerk_chunks")
+            .select("text")
+            .text_search("text", question)
+            .execute()
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
-    chunks = [r["text"] for r in result.data] if result.data else []
+    chunks = [r["text"] for r in result.data[:5]] if result.data else []
 
     if not chunks:
         raise HTTPException(status_code=404, detail="Keine passenden Inhalte gefunden.")
