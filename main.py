@@ -46,21 +46,28 @@ async def ask_question(payload: Question):
     logging.info(f"Eingegangene Frage: {question}")
 
     try:
-        # Verbesserte PostgreSQL tsquery Vorbereitung
-        cleaned_query = " & ".join(filter(None, (word.strip().lower().replace("?", "").replace(",", "") for word in question.split())))
+        # tsquery aufbereiten (PostgreSQL-kompatibel, mit deutscher Sprachkonfiguration)
+        cleaned_query = " & ".join(
+            filter(None, (word.strip().lower().replace("?", "").replace(",", "") for word in question.split()))
+        )
         logging.info(f"Aufbereitete tsquery: {cleaned_query}")
 
-        response = supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
-        logging.info(f"Typ des Response-Objekts: {type(response)}")
-        logging.info(f"Inhalt des Response-Objekts: {response.__dict__}")
-        data = response.data or []  # Greife direkt auf response.data zu
+        # SQL-Abfrage direkt gegen Supabase (PostgREST RPC oder SQL-Raw Query via REST API)
+        sql_query = f"""
+            SELECT content FROM regelwerk_chunks
+            WHERE to_tsvector('german', content) @@ to_tsquery('german', '{cleaned_query}')
+            LIMIT {CONTEXT_CHUNKS};
+        """
+        response = supabase.rpc('sql', {'q': sql_query}).execute()
+        data = response.data or []
+
         logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
 
     except Exception as e:
-        logging.error(f"Supabase Fehler: {e}")
+        logging.error(f"Supabase Fehler bei SQL: {e}")
         raise HTTPException(status_code=500, detail=f"Supabase Fehler: {str(e)}")
 
-    chunks = [r["content"] for r in data[:CONTEXT_CHUNKS]]
+    chunks = [r["content"] for r in data]
 
     if not chunks:
         logging.warning("Keine passenden Inhalte in der Datenbank gefunden.")
@@ -76,20 +83,19 @@ Kontext:
 Frage: {question}
 
 Antwort:"""
-    logging.info(f"Erstellter Prompt für Ollama: {prompt[:200]}...") # Nur die ersten 200 Zeichen loggen
 
     try:
-        response_ollama = await asyncio.to_thread(requests.post,
+        response_ollama = await asyncio.to_thread(
+            requests.post,
             f"{OLLAMA_HOST}/api/generate",
             json={"model": "llama3", "prompt": prompt},
             timeout=60
         )
         response_ollama.raise_for_status()
         content = response_ollama.json().get("response", "Keine Antwort erhalten.")
-        logging.info(f"Antwort von Ollama erhalten: {content[:100]}...") # Nur die ersten 100 Zeichen loggen
+        logging.info(f"Ollama Antwort erhalten: {content[:100]}...")
         return {"antwort": content.strip()}
 
     except requests.exceptions.RequestException as e:
         logging.error(f"Ollama Fehler: {e}")
         raise HTTPException(status_code=502, detail=f"Ollama Fehler: {str(e)}")
-        
