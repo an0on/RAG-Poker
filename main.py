@@ -1,16 +1,28 @@
 from fastapi import FastAPI, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from supabase import create_client, Client
 import os
 import requests
+import logging
+import asyncio  # Für asynchrone Operationen
 
+# Logging einrichten
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama-server:11434")
+CONTEXT_CHUNKS = int(os.getenv("CONTEXT_CHUNKS", 5))  # Anzahl der Kontext-Chunks konfigurierbar
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise Exception("Fehlende Umgebungsvariablen: SUPABASE_URL und/oder SUPABASE_KEY")
+# Validierung der Umgebungsvariablen
+if not SUPABASE_URL:
+    raise ValueError("Umgebungsvariable SUPABASE_URL fehlt.")
+if not SUPABASE_KEY:
+    raise ValueError("Umgebungsvariable SUPABASE_KEY fehlt.")
+try:
+    HttpUrl(SUPABASE_URL)
+except ValueError:
+    raise ValueError(f"Ungültiges Format für SUPABASE_URL: {SUPABASE_URL}")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = FastAPI()
@@ -19,30 +31,31 @@ class Question(BaseModel):
     question: str
 
 @app.get("/")
-def read_root():
+async def read_root():
     return {"message": "Bin bereit. Frag mich was unter POST /ask."}
 
 @app.post("/ask")
-def ask_question(payload: Question):
+async def ask_question(payload: Question):
     question = payload.question
+    logging.info(f"Eingegangene Frage: {question}")
 
     try:
-        # PostgreSQL tsquery vorbereiten
-        cleaned_query = " & ".join(question.replace("?", "").replace(",", "").split())
+        # Verbesserte PostgreSQL tsquery Vorbereitung
+        cleaned_query = " & ".join(filter(None, (word.strip().lower().replace("?", "").replace(",", "") for word in question.split())))
+        logging.info(f"Aufbereitete tsquery: {cleaned_query}")
 
-        result = (
-            supabase
-            .table("regelwerk_chunks")
-            .select("content")
-            .text_search("content", cleaned_query)
-            .execute()
-        )
+        result = await supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
+        data = result.data or []
+        logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
+        logging.error(f"Supabase Fehler: {e}")
+        raise HTTPException(status_code=500, detail=f"Supabase Fehler: {str(e)}")
 
-    chunks = [r["content"] for r in result.data[:5]] if result.data else []
+    chunks = [r["content"] for r in data[:CONTEXT_CHUNKS]]
 
     if not chunks:
+        logging.warning("Keine passenden Inhalte in der Datenbank gefunden.")
         raise HTTPException(status_code=404, detail="Keine passenden Inhalte gefunden.")
 
     context = "\n".join(chunks)
@@ -55,16 +68,19 @@ Kontext:
 Frage: {question}
 
 Antwort:"""
+    logging.info(f"Erstellter Prompt für Ollama: {prompt[:200]}...") # Nur die ersten 200 Zeichen loggen
 
     try:
-        response = requests.post(
+        response = await asyncio.to_thread(requests.post,
             f"{OLLAMA_HOST}/api/generate",
             json={"model": "llama3", "prompt": prompt},
             timeout=60
         )
         response.raise_for_status()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Ollama Error: {str(e)}")
+        content = response.json().get("response", "Keine Antwort erhalten.")
+        logging.info(f"Antwort von Ollama erhalten: {content[:100]}...") # Nur die ersten 100 Zeichen loggen
+        return {"antwort": content.strip()}
 
-    content = response.json().get("response", "Keine Antwort erhalten.")
-    return {"antwort": content.strip()}
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Ollama Fehler: {e}")
+        raise HTTPException(status_code=502, detail=f"Ollama Fehler: {str(e)}")
