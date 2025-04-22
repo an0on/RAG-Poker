@@ -7,4 +7,4 @@ services:
     ports:
       - internal: 8787
         external: 8787
-    envFile: .env
+
