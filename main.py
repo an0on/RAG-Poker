@@ -50,8 +50,8 @@ async def ask_question(payload: Question):
         cleaned_query = " & ".join(filter(None, (word.strip().lower().replace("?", "").replace(",", "") for word in question.split())))
         logging.info(f"Aufbereitete tsquery: {cleaned_query}")
 
-        # Asynchrone Supabase-Abfrage
-        result = await supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
+        response = supabase.table("regelwerk_chunks").select("content").text_search("content", cleaned_query).execute()
+        result = await response
         data = result.data or []
         logging.info(f"Anzahl der gefundenen Chunks: {len(data)}")
 
@@ -78,13 +78,13 @@ Antwort:"""
     logging.info(f"Erstellter Prompt für Ollama: {prompt[:200]}...") # Nur die ersten 200 Zeichen loggen
 
     try:
-        response = await asyncio.to_thread(requests.post,
+        response_ollama = await asyncio.to_thread(requests.post,
             f"{OLLAMA_HOST}/api/generate",
             json={"model": "llama3", "prompt": prompt},
             timeout=60
         )
-        response.raise_for_status()
-        content = response.json().get("response", "Keine Antwort erhalten.")
+        response_ollama.raise_for_status()
+        content = response_ollama.json().get("response", "Keine Antwort erhalten.")
         logging.info(f"Antwort von Ollama erhalten: {content[:100]}...") # Nur die ersten 100 Zeichen loggen
         return {"antwort": content.strip()}
 
