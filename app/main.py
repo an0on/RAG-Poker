@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 import os
@@ -19,7 +20,7 @@ class Question(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "RAG läuft wie geschmiert 🚀 - Frag mich was unter /ask"}
+    return {"message": "Läuft wie geschmiert 🚀 - Frag mich was unter /ask"}
 
 @app.post("/ask")
 def ask_question(payload: Question):
