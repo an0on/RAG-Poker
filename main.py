@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama-server:11434")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
 CONTEXT_CHUNKS = int(os.getenv("CONTEXT_CHUNKS", 5))  # Anzahl der Kontext-Chunks konfigurierbar
 
 # Validierung der Umgebungsvariablen
