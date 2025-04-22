@@ -12,10 +12,10 @@ try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     print("Supabase-Client erfolgreich erstellt.")
 
-    # Einfache Abfrage zum Testen der Verbindung
-    response = supabase.table("regelwerk_chunks").select("count(*)").execute()
+    # Korrekte Abfrage, um die Anzahl der Einträge zu erhalten
+    response = supabase.table("regelwerk_chunks").select("*", count="exact").execute()
     if response.error is None:
-        count = response.data[0]['count']
+        count = response.count
         print(f"Verbindung erfolgreich. Anzahl der Einträge in 'regelwerk_chunks': {count}")
     else:
         print(f"Fehler bei der Abfrage: {response.error}")
